@@ -2,5 +2,4 @@
 /target
 /project
 /spark-warehouse
-build.sbt
 WI_Project.iml
