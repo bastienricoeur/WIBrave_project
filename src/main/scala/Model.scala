@@ -4,13 +4,12 @@ import org.apache.spark.ml.tuning.{CrossValidator, ParamGridBuilder}
 import org.apache.spark.sql.DataFrame
 
 
-object Prediction {
+object Model {
 
   def decisionTree(label: String, features: String, prediction: String, metricName: String)(dataFrame: DataFrame): DecisionTreeClassificationModel = {
 
     val splitData = dataFrame.randomSplit(Array(0.7, 0.3))
     val dataToTrain = splitData(0)
-
     val dataToTest = splitData(1)
 
     val decisionTreeClassifier = new DecisionTreeClassifier()
@@ -53,7 +52,16 @@ object Prediction {
     model
   }
 
-  def logisticRegression(label: String, features: String, prediction: String, maxIter: Int = 1, regParam: Double = 0.3, elasticNetParam: Double = 0.8, debug: Boolean = true)(data: DataFrame): LogisticRegressionModel = {
+  def generateModel(modelType: String = "RANDOM_FOREST", modelPath: String)(dataFrame: DataFrame): Unit = {
+    modelType match {
+      case "RANDOM_FOREST" => Model.randomForest("label", "features", "prediction")(dataFrame).write.overwrite.save(modelPath)
+      case "LOGISTIC_REGRESSION" => Model.logisticRegression("label", "features", "prediction")(dataFrame).write.overwrite.save(modelPath)
+      case "DECISION_TREE" => Model.decisionTree("label", "features", "prediction", "areaUnderROC")(dataFrame).write.overwrite.save(modelPath)
+      case default => println(s"Unexpected model: $default, please use one of RANDOM_FOREST, LOGISTIC_REGRESSION or DECISION_TREE")
+    }
+  }
+
+  def logisticRegression(label: String, features: String, prediction: String, maxIter: Int = 10, regParam: Double = 0.3, elasticNetParam: Double = 0.8, debug: Boolean = true)(data: DataFrame): LogisticRegressionModel = {
     val logisticRegression = new LogisticRegression()
       .setLabelCol(label)
       .setFeaturesCol(features)
@@ -65,12 +73,8 @@ object Prediction {
       .setThreshold(0.5)
       .setFamily("auto")
 
-    val model = logisticRegression
-      .fit(data)
+    val model = logisticRegression.fit(data)
     model
   }
-
-
-
 
 }

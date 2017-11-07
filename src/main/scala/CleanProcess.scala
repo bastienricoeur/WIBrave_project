@@ -1,3 +1,4 @@
+import org.apache.spark.ml.feature.{StringIndexer, VectorAssembler}
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.{DataFrame, SparkSession}
@@ -97,5 +98,56 @@ object CleanProcess {
   def media(dataFrame: DataFrame): DataFrame = {
     dataFrame
       .withColumn("media", when(col("media").isNull,"null").otherwise(col("media")))
+  }
+
+  def cleanData(spark: SparkSession)(data: DataFrame): DataFrame = {
+    data.transform(CleanProcess.label)
+      .transform(CleanProcess.balanceDataset)
+      .transform(CleanProcess.os)
+      .transform(CleanProcess.bidFloor)
+      .transform(CleanProcess.timestamp)
+      .transform(CleanProcess.sizeBanner)
+      .transform(CleanProcess.interests)
+      .transform(CleanProcess.media)
+      .transform(CleanProcess.weightDataset(spark))
+      .transform(indexStrings(
+        "os",
+        "appOrSite",
+        "bidFloor",
+        "publisher",
+        "timestamp",
+        "sizeReset",
+        "media",
+        "label"
+      ))
+      .transform(vectorizeFeatures("features",
+        "os_indexed",
+        "appOrSite_indexed",
+        "bidFloor_indexed",
+        "publisher_indexed",
+        "timestamp_indexed",
+        "sizeReset_indexed",
+        "media_indexed"
+      ))
+  }
+
+  def vectorizeFeatures(vectorName: String, columnNames: String*)(dataFrame: DataFrame): DataFrame = {
+    new VectorAssembler()
+      .setInputCols(columnNames.map {
+        _.toString
+      }.toArray)
+      .setOutputCol(vectorName)
+      .transform(dataFrame)
+  }
+
+  def indexStrings(columnNames: String*)(data: DataFrame): DataFrame = {
+    val indexers = columnNames.map { columnName => {
+      new StringIndexer()
+        .setInputCol(columnName)
+        .setOutputCol(s"${columnName}_indexed")
+        .fit(data)
+    }
+    }
+    indexers.foldLeft(data) { (df, indexer) => indexer.transform(df) }
   }
 }
