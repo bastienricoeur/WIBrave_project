@@ -100,9 +100,39 @@ object CleanProcess {
       .withColumn("media", when(col("media").isNull,"null").otherwise(col("media")))
   }
 
-  def cleanData(spark: SparkSession)(data: DataFrame): DataFrame = {
+  def cleanAndBalanceData(spark: SparkSession)(data: DataFrame): DataFrame = {
     data.transform(CleanProcess.label)
       .transform(CleanProcess.balanceDataset)
+      .transform(CleanProcess.os)
+      .transform(CleanProcess.bidFloor)
+      .transform(CleanProcess.timestamp)
+      .transform(CleanProcess.sizeBanner)
+      .transform(CleanProcess.interests)
+      .transform(CleanProcess.media)
+      .transform(CleanProcess.weightDataset(spark))
+      .transform(indexStrings(
+        "os",
+        "appOrSite",
+        "bidFloor",
+        "publisher",
+        "timestamp",
+        "sizeReset",
+        "media",
+        "label"
+      ))
+      .transform(vectorizeFeatures("features",
+        "os_indexed",
+        "appOrSite_indexed",
+        "bidFloor_indexed",
+        "publisher_indexed",
+        "timestamp_indexed",
+        "sizeReset_indexed",
+        "media_indexed"
+      ))
+  }
+
+  def cleanData(spark: SparkSession)(data: DataFrame): DataFrame = {
+    data.transform(CleanProcess.label)
       .transform(CleanProcess.os)
       .transform(CleanProcess.bidFloor)
       .transform(CleanProcess.timestamp)

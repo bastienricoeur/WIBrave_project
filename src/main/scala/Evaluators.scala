@@ -6,7 +6,7 @@ import org.apache.spark.sql.functions.col
 
 object Evaluators {
 
-  def evaluateDecisionTree(model: DecisionTreeClassificationModel, testData: DataFrame, label: String, prediction: String, metricName: String): DataFrame = {
+  def evaluateDecisionTree(model: DecisionTreeClassificationModel, testData: DataFrame, label: String, prediction: String, metricName: String = "areaUnderROC"): DataFrame = {
 
     val predictions = model.transform(testData)
 

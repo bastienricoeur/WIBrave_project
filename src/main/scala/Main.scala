@@ -1,14 +1,13 @@
 import org.apache.log4j.{Level, Logger}
-import org.apache.spark.ml.classification.{DecisionTreeClassificationModel, RandomForestClassificationModel}
-import org.apache.spark.mllib.classification.LogisticRegressionModel
+import org.apache.spark.ml.classification.{DecisionTreeClassificationModel, LogisticRegressionModel, RandomForestClassificationModel}
 import org.apache.spark.sql.{DataFrame, SparkSession}
 
 object Main {
 
   def main(args: Array[String]) {
 
-    Logger.getLogger("org").setLevel(Level.WARN)
-    Logger.getLogger("akka").setLevel(Level.WARN)
+    Logger.getLogger("org").setLevel(Level.OFF)
+    Logger.getLogger("akka").setLevel(Level.OFF)
     val spark = SparkSession
       .builder()
       .appName("test")
@@ -18,18 +17,17 @@ object Main {
     /**
       * Parse parameters
       */
-    if (!args.contains("--input") || args.contains("--output")) throw new Error(usageHelp)
+    if (!args.contains("--input") || !args.contains("--output")) throw new Error(usageHelp)
     val input = args(args.indexOf("--input") + 1)
     val output = args(args.indexOf("--output") + 1)
     val model = args(args.indexOf("--model") + 1)
 
-    val data: DataFrame = spark.read.format("libsvm").json(input).limit(1000)
-      .transform(CleanProcess.cleanData(spark))
-
+    val t1 = System.currentTimeMillis()
     args(0) match {
-      case "train" => trainModel(data, output)
-      case "test" => testModel(data, output, model, spark)
+      case "train" => trainModel(spark, input, output)
+      case "test" => testModel(spark, input, output, model)
     }
+    println("Execution time: " + (System.currentTimeMillis() - t1).toString + "ms")
   }
 
   def usageHelp(): String = {
@@ -50,16 +48,44 @@ object Main {
       "\n=============================="
   }
 
-  def trainModel(dataFrame: DataFrame, outputModel: String, modelType: String = "RANDOM_FOREST") = {
-    Model.generateModel(modelType, outputModel)(dataFrame)
+  def trainModel(spark: SparkSession, input: String, outputModel: String, modelType: String = "RANDOM_FOREST") = {
+
+    val data: DataFrame = spark.read.format("libsvm").json(input).limit(1000)
+      .transform(CleanProcess.cleanAndBalanceData(spark))
+
+    println("=============================")
+    println("=                           =")
+    println("=       TRAINING MODEL      =")
+    println("=                           =")
+    println("=============================")
+
+    Model.generateModel(modelType, outputModel)(data)
   }
 
-  def testModel(dataFrame: DataFrame, output: String, modelPath: String, spark: SparkSession, modelType: String = "RANDOM_FOREST") = {
+  def testModel(spark: SparkSession, input: String, output: String, modelPath: String, modelType: String = "RANDOM_FOREST") = {
+
+    val data: DataFrame = spark.read.format("libsvm").json(input).limit(2000)
+      .transform(CleanProcess.cleanData(spark))
+    println("=============================")
+    println("=                           =")
+    println("=       TESTING MODEL      =")
+    println("=                           =")
+    println("=============================")
     modelType match {
-      case "RANDOM_FOREST" => RandomForestClassificationModel.load(modelPath)
-      case "LOGISTIC_REGRESSION" => LogisticRegressionModel.load(spark.sparkContext, modelPath)
-      case "DECISION_TREE" => DecisionTreeClassificationModel.load(modelPath)
+      case "RANDOM_FOREST" => Evaluators.evaluateRandomForest(RandomForestClassificationModel.load(modelPath), data, "label", "prediction")
+      case "LOGISTIC_REGRESSION" => Evaluators.evaluateLinearRegression(LogisticRegressionModel.load(modelPath), data, "label", "prediction").show(100)
+      case "DECISION_TREE" => Evaluators.evaluateDecisionTree(DecisionTreeClassificationModel.load(modelPath), data, "label", "prediction").show(100)
       case default => println(s"Unexpected model: $default, please use one of RANDOM_FOREST, LOGISTIC_REGRESSION or DECISION_TREE")
     }
+  }
+
+  def writeCsv(output: String)(dataFrame: DataFrame) = {
+    dataFrame.write
+      .mode("overwrite")
+      .format("com.databricks.spark.csv")
+      .option("header", value = true)
+      .option("delimiter", ",")
+      .save(output)
+    dataFrame
   }
 }
