@@ -1,7 +1,6 @@
-import org.apache.spark.sql.{DataFrame, SparkSession}
-import org.apache.log4j.Logger
-import org.apache.log4j.Level
+import org.apache.log4j.{Level, Logger}
 import org.apache.spark.ml.feature._
+import org.apache.spark.sql.{DataFrame, SparkSession}
 
 object SimpleScalaSpark {
 
@@ -21,7 +20,7 @@ object SimpleScalaSpark {
       * Parse parameters
       */
     //val dataFile = args(args.indexOf("--inputFile"))
-    val dataFile = "/Users/bastienricoeur/Desktop/wi_lib/data-students.json"
+    val dataFile = "/Users/benjaminafonso/Downloads/data-students.json"
 
     if (!args.contains("--inputFile")) {
       //throw new Error(usageHelp)
@@ -35,18 +34,21 @@ object SimpleScalaSpark {
       .master("local[*]")
       .getOrCreate()
 
-    val data: DataFrame = spark.read.format("libsvm").json(dataFile).limit(1000)
-      .transform(CleanProcess.os)
+    val data: DataFrame = spark.read.format("libsvm").json(dataFile).limit(20000)
       .transform(CleanProcess.label)
+      .transform(CleanProcess.balanceDataset)
+      .transform(CleanProcess.os)
       .transform(CleanProcess.bidFloor)
       .transform(CleanProcess.timestamp)
       .transform(CleanProcess.sizeBanner)
       .transform(CleanProcess.interests)
       .transform(CleanProcess.media)
+      .transform(CleanProcess.weightDataset(spark))
       .transform(indexStrings(
         "os",
         "appOrSite",
         "bidFloor",
+        "publisher",
         "timestamp",
         "sizeReset",
         "media",
@@ -56,21 +58,25 @@ object SimpleScalaSpark {
         "os_indexed",
         "appOrSite_indexed",
         "bidFloor_indexed",
+        "publisher_indexed",
         "timestamp_indexed",
         "sizeReset_indexed",
         "media_indexed"
       ))
-      .transform(Prediction.randomForest("features", "label_indexed", "prediction", ""))
   }
 
-  def indexStrings(columnNames: String*)(dataFrame: DataFrame): DataFrame = {
+  def indexStrings(columnNames: String*)(data: DataFrame): DataFrame = {
     val indexers = columnNames.map { columnName => {
       new StringIndexer()
         .setInputCol(columnName)
         .setOutputCol(s"${columnName}_indexed")
-        .fit(dataFrame)
+        .fit(data)
     }}
-    indexers.foldLeft(dataFrame) { (df, indexer) => indexer.transform(df) }
+    indexers.foldLeft(data) { (df, indexer) => indexer.transform(df) }
+  }
+
+  def generateModel(dataFrame: DataFrame) = {
+    Prediction.randomForest("label", "features", "prediction")
   }
 
   def vectorizeFeatures(vectorName: String, columnNames: String*)(dataFrame: DataFrame): DataFrame = {
@@ -81,5 +87,3 @@ object SimpleScalaSpark {
   }
 
 }
-
-case class Flow(appOrSite: String, bidfloor: Double, city: String, exchange: String, impid: String, interests: String, label: Boolean, media: String, publisher: String, os: String, network: String, size: Array[Long], timestamp: Long, typ: String, user: String)

@@ -1,6 +1,6 @@
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types._
-import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.{DataFrame, SparkSession}
 
 object CleanProcess {
   def os(dataFrame: DataFrame): DataFrame = {
@@ -28,7 +28,7 @@ object CleanProcess {
 
   def sizeBanner(dataFrame: DataFrame): DataFrame = {
     dataFrame
-      .withColumn("sizeReset",when(!col("size").isNull,"notNull").otherwise("null"))
+      .withColumn("sizeReset", when(!col("size").isNull, "notNull").otherwise("null"))
       .withColumn("sizeReset", when(col("size")(0)<200 && col("size")(1)<200,"small").otherwise(col("sizeReset")))
       .withColumn("sizeReset", when(col("size")(0)>200,"large").otherwise(col("sizeReset")))
       .withColumn("sizeReset", when(col("size")(1)>200,"height").otherwise(col("sizeReset")))
@@ -73,6 +73,25 @@ object CleanProcess {
       .withColumn("C24", when(col("interests").contains("IAB24"),1.0).otherwise(0.0))
       .withColumn("C25", when(col("interests").contains("IAB25"),1.0).otherwise(0.0))
       .withColumn("C26", when(col("interests").contains("IAB26"),1.0).otherwise(0.0))
+  }
+
+  def weightDataset(spark: SparkSession)(dataFrame: DataFrame): DataFrame = {
+    // Re-balancing (weighting) of records to be used in the logistic loss objective function
+    import spark.implicits._
+    val (dataFrameSize, positives) = dataFrame.select(count("*"), sum(dataFrame("label"))).as[(Long, Double)].collect.head
+    val balancingRatio = positives / dataFrameSize
+
+    val weightedDataset = {
+      dataFrame.withColumn("classWeightCol", when(dataFrame("label") === 0.0, balancingRatio).otherwise(1.0 - balancingRatio))
+    }
+    weightedDataset
+  }
+
+  def balanceDataset(dataFrame: DataFrame): DataFrame = {
+    val trueEntries: DataFrame = dataFrame.filter(col("label") === 1.0)
+    // TODO: Randomize false entries picked
+    val falseEntries: DataFrame = dataFrame.filter(col("label") === 0.0).limit(trueEntries.collect.size)
+    trueEntries.union(falseEntries)
   }
 
   def media(dataFrame: DataFrame): DataFrame = {
