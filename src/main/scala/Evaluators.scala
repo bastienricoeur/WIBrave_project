@@ -38,81 +38,50 @@ object Evaluators {
     predictions
   }
 
-  def evaluateRandomForest(model: RandomForestClassificationModel, testData: DataFrame, label: String, prediction: String, metricName: String = "areaUnderROC"): DataFrame = {
+  def evaluateRandomForest(model: RandomForestClassificationModel, testData: DataFrame, label: String, prediction: String, debug: Boolean = true, metricName: String = "areaUnderROC"): DataFrame = {
     val predictions = model.transform(testData)
-    val binaryClassificationEvaluator = new BinaryClassificationEvaluator().setLabelCol(label).setRawPredictionCol("rawPrediction")
-    binaryClassificationEvaluator.setMetricName(metricName)
-    val labelPrediction = predictions.select(label, prediction)
-    val trueNeg = labelPrediction.filter(col(label) === 0.0 && col(prediction) === 0.0)
-    val truePos = labelPrediction.filter(col(label) === 1.0 && col(prediction) === 1.0)
-    val falseNeg = labelPrediction.filter(col(label) === 1.0 && col(prediction) === 0.0)
-    val falsePos = labelPrediction.filter(col(label) === 0.0 && col(prediction) === 1.0)
 
-    val nbTruePos = truePos.collect.size
-    val nbFalsePos = falsePos.collect.size
-    val nbFalseNeg = falseNeg.collect.size
-    val nbTrueNeg = trueNeg.collect.size
-    val nbEntries = labelPrediction.collect.size
+    if (debug) {
+      val binaryClassificationEvaluator = new BinaryClassificationEvaluator().setLabelCol(label).setRawPredictionCol("rawPrediction")
+      binaryClassificationEvaluator.setMetricName(metricName)
+      val labelPrediction = predictions.select(label, prediction)
+      val trueNeg = labelPrediction.filter(col(label) === 0.0 && col(prediction) === 0.0)
+      val truePos = labelPrediction.filter(col(label) === 1.0 && col(prediction) === 1.0)
+      val falseNeg = labelPrediction.filter(col(label) === 1.0 && col(prediction) === 0.0)
+      val falsePos = labelPrediction.filter(col(label) === 0.0 && col(prediction) === 1.0)
 
-    println(s"TP: $nbTruePos")
-    println(s"FP: $nbFalsePos")
-    println(s"FN: $nbFalseNeg")
-    println(s"TN: $nbTrueNeg")
+      val nbTruePos = truePos.collect.size
+      val nbFalsePos = falsePos.collect.size
+      val nbFalseNeg = falseNeg.collect.size
+      val nbTrueNeg = trueNeg.collect.size
+      val nbEntries = labelPrediction.collect.size
 
-    val precision = nbTruePos / (nbTruePos + nbFalseNeg)
-    println(s"Precision $precision")
-    val recalla = nbTruePos / (nbTruePos + nbFalsePos)
-    println(s"Recall $recalla")
+      println(s"$nbTruePos CLICS WERE PREDICTED CORRECTLY")
+      println(s"$nbFalseNeg CLICS WEREN'T PREDICTED AS CLICS")
+      println(s"$nbFalsePos CLICS WERE PREDICTED BUT WEREN'T CLICS")
+      println(s"$nbTrueNeg NOT CLICS WERE PREDICTED CORRECTLY")
 
-    var result = predictions
-      .select(prediction, label)
-      .rdd
-      .map { row => row.getAs[Double](prediction) -> row.getAs[Double](label) }
-    val metrics = new BinaryClassificationMetrics(result)
-    val multiMetrics = new MulticlassMetrics(result)
+      var result = predictions
+        .select(prediction, label)
+        .rdd
+        .map { row => row.getAs[Double](prediction) -> row.getAs[Double](label) }
+      val metrics = new BinaryClassificationMetrics(result)
+      val multiMetrics = new MulticlassMetrics(result)
 
-    val recall = metrics.recallByThreshold
-    metrics.precisionByThreshold.foreach { case (t, r) =>
-      println(s"Threshold: $t, Precision: $r")
+      metrics.precisionByThreshold.foreach { case (t, r) =>
+        println(s"Threshold: $t, Precision: $r")
+      }
+
+      metrics.recallByThreshold.foreach { case (t, r) =>
+        println(s"Threshold: $t, Recall: $r")
+      }
+
+      val accuracy = multiMetrics.accuracy
+      println("Confusion matrix:")
+      println(multiMetrics.confusionMatrix)
+      println(s"Accuracy $accuracy")
     }
 
-    recall.foreach { case (t, r) =>
-      println(s"Threshold: $t, Recall: $r")
-    }
-
-    val area = binaryClassificationEvaluator.evaluate(predictions)
-    println("Area under ROC: " + metrics.areaUnderROC)
-
-    val accuracy = multiMetrics.accuracy
-    println("Confusion matrix:")
-    println(multiMetrics.confusionMatrix)
-    println(s"Accuracy $accuracy")
-
-    val labels = multiMetrics.labels
-    labels.foreach { l =>
-      println(s"Precision($l) = " + multiMetrics.precision(l))
-    }
-
-    // Recall by label
-    labels.foreach { l =>
-      println(s"Recall($l) = " + multiMetrics.recall(l))
-    }
-
-    // False positive rate by label
-    labels.foreach { l =>
-      println(s"FPR($l) = " + multiMetrics.falsePositiveRate(l))
-    }
-
-    // F-measure by label
-    labels.foreach { l =>
-      println(s"F1-Score($l) = " + multiMetrics.fMeasure(l))
-    }
-
-    // Weighted stats
-    println(s"Weighted precision: ${multiMetrics.weightedPrecision}")
-    println(s"Weighted recall: ${multiMetrics.weightedRecall}")
-    println(s"Weighted F1 score: ${multiMetrics.weightedFMeasure}")
-    println(s"Weighted false positive rate: ${multiMetrics.weightedFalsePositiveRate}")
     predictions
   }
 

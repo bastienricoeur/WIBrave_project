@@ -44,7 +44,7 @@ object Model {
     val randomForest = new RandomForestClassifier()
       .setLabelCol(label)
       .setFeaturesCol(features)
-      .setNumTrees(1000)
+      .setNumTrees(50)
       .setImpurity("gini")
       .setMaxBins(244)
 
