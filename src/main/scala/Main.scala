@@ -25,7 +25,7 @@ object Main {
     val t1 = System.currentTimeMillis()
     args(0) match {
       case "train" => trainModel(spark, input, output)
-      case "test" => testModel(spark, input, output, model, false)
+      case "test" => testModel(spark, input, output, model, args.contains("--debug"))
     }
     println("Execution time: " + (System.currentTimeMillis() - t1).toString + "ms")
   }
@@ -39,6 +39,7 @@ object Main {
       "\n--input: /path/to/inputData" +
       "\n--model (if COMMAND is 'test'): /path/to/model" +
       "\n--output: /path/to/output.csv" +
+      "\n--debug: display statistics about the test" +
       "\nInput parameter" +
       "\n - the dataset if the command is 'train'" +
       "\n - the dataset the model will be running against is 'test'" +
