@@ -74,6 +74,11 @@ object Main {
     println("=============================")
     modelType match {
       case "RANDOM_FOREST" => Evaluators.evaluateRandomForest(RandomForestClassificationModel.load(modelPath), data, "label", "prediction", debug)
+        .drop("size")
+        .drop("features")
+        .drop("rawPrediction")
+        .drop("probability")
+        .transform(writeCsv(output))
       case "LOGISTIC_REGRESSION" => Evaluators.evaluateLinearRegression(LogisticRegressionModel.load(modelPath), data, "label", "prediction").show(100)
       case "DECISION_TREE" => Evaluators.evaluateDecisionTree(DecisionTreeClassificationModel.load(modelPath), data, "label", "prediction").show(100)
       case default => println(s"Unexpected model: $default, please use one of RANDOM_FOREST, LOGISTIC_REGRESSION or DECISION_TREE")
@@ -81,7 +86,9 @@ object Main {
   }
 
   def writeCsv(output: String)(dataFrame: DataFrame) = {
-    dataFrame.write
+    dataFrame
+      .coalesce(1)
+      .write
       .mode("overwrite")
       .format("com.databricks.spark.csv")
       .option("header", value = true)

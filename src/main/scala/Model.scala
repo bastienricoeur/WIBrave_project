@@ -46,7 +46,7 @@ object Model {
       .setFeaturesCol(features)
       .setNumTrees(50)
       .setImpurity("gini")
-      .setMaxBins(244)
+      .setMaxBins(350)
 
     val model = randomForest.fit(data)
     model
