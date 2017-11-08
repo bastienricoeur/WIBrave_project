@@ -106,19 +106,32 @@ object Main {
     val data1: DataFrame =  data.withColumn("rowId1", monotonically_increasing_id())
     val dataFrame1 =  dataFrame.withColumn("rowId2", monotonically_increasing_id())
     if(!data.columns.contains("label")){
-      dataFrame1.withColumn("label",when(col("prediction") === 1,true).otherwise(false))
+      val df = dataFrame1.as("df2").join(data1.as("df1"), data1("rowId1") === dataFrame1("rowId2"), "inner").drop("rowId1").drop("rowId2").withColumn("label",when(col("prediction") === 1,true).otherwise(false))
+      df
+        .drop("size")
+        .drop("prediction")
+        .coalesce(1)
+        .write
+        .mode("overwrite")
+        .format("com.databricks.spark.csv")
+        .option("header", value = true)
+        .option("delimiter", ",")
+        .save(output)
+      df
+    }else {
+      val df = dataFrame1.as("df2").join(data1.as("df1"), data1("rowId1") === dataFrame1("rowId2"), "inner").drop("rowId1").drop("rowId2")
+      df
+        .drop("size")
+        .coalesce(1)
+        .write
+        .mode("overwrite")
+        .format("com.databricks.spark.csv")
+        .option("header", value = true)
+        .option("delimiter", ",")
+        .save(output)
+      df
     }
-    val df = dataFrame1.as("df2").join(data1.as("df1"), data1("rowId1") === dataFrame1("rowId2"), "inner").drop("rowId1").drop("rowId2")
-    df
-      .drop("size")
-      .drop("prediction")
-      .coalesce(1)
-      .write
-      .mode("overwrite")
-      .format("com.databricks.spark.csv")
-      .option("header", value = true)
-      .option("delimiter", ",")
-      .save(output)
-    df
+
+
   }
 }
