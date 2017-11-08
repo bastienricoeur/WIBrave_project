@@ -1,6 +1,7 @@
 import org.apache.log4j.{Level, Logger}
 import org.apache.spark.ml.classification.{DecisionTreeClassificationModel, LogisticRegressionModel, RandomForestClassificationModel}
 import org.apache.spark.sql.{DataFrame, SparkSession}
+import org.apache.spark.sql.functions.{col, monotonically_increasing_id, when}
 
 object Main {
 
@@ -74,19 +75,21 @@ object Main {
     println("=============================")
     modelType match {
       case "RANDOM_FOREST" => Evaluators.evaluateRandomForest(RandomForestClassificationModel.load(modelPath), data, "label", "prediction", debug)
-        .drop("size")
-        .drop("features")
-        .drop("rawPrediction")
-        .drop("probability")
-        .transform(writeCsv(output))
+          .select("sizeReset","prediction")
+        .transform(writeCsv(spark, input, output))
       case "LOGISTIC_REGRESSION" => Evaluators.evaluateLinearRegression(LogisticRegressionModel.load(modelPath), data, "label", "prediction").show(100)
       case "DECISION_TREE" => Evaluators.evaluateDecisionTree(DecisionTreeClassificationModel.load(modelPath), data, "label", "prediction").show(100)
       case default => println(s"Unexpected model: $default, please use one of RANDOM_FOREST, LOGISTIC_REGRESSION or DECISION_TREE")
     }
   }
 
-  def writeCsv(output: String)(dataFrame: DataFrame) = {
-    dataFrame
+  def writeCsv(spark: SparkSession, input: String, output: String)(dataFrame: DataFrame) = {
+    val data: DataFrame = spark.read.format("libsvm").json(input)
+    val data1: DataFrame =  data.withColumn("rowId1", monotonically_increasing_id())
+    val dataFrame1 =  dataFrame.withColumn("rowId2", monotonically_increasing_id())
+    val df = data1.as("df1").join(dataFrame1.as("df2"), data1("rowId1") === dataFrame1("rowId2"), "inner").drop("rowId1").drop("rowId2")
+    df
+      .drop("size")
       .coalesce(1)
       .write
       .mode("overwrite")
@@ -94,6 +97,6 @@ object Main {
       .option("header", value = true)
       .option("delimiter", ",")
       .save(output)
-    dataFrame
+    df
   }
 }
