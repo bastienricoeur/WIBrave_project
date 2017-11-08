@@ -1,3 +1,4 @@
+import CleanProcess.{indexStrings, vectorizeFeatures}
 import org.apache.spark.ml.feature.{StringIndexer, VectorAssembler}
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types._
@@ -157,15 +158,71 @@ object CleanProcess {
       ))
   }
 
-  def cleanData(spark: SparkSession)(data: DataFrame): DataFrame = {
-    data.transform(CleanProcess.label)
+  def cleanData(spark: SparkSession, debug: Boolean)(data: DataFrame): DataFrame = {
+    if(debug){
+      if (!data.columns.contains("label")) {
+        throw new Error("Missing label on your data to test it")
+      }
+      data.transform(CleanProcess.label)
+        .transform(CleanProcess.os)
+        .transform(CleanProcess.bidFloor)
+        .transform(CleanProcess.timestamp)
+        .transform(CleanProcess.sizeBanner)
+        .transform(CleanProcess.interests)
+        .transform(CleanProcess.media)
+        .transform(indexStrings(
+          "label",
+          "os",
+          "appOrSite",
+          "bidFloor",
+          "publisher",
+          "timestamp",
+          "sizeReset",
+          "media",
+          "C1",
+          "C2",
+          "C6",
+          "C7",
+          "C8",
+          "C9",
+          "C12",
+          "C14",
+          "C17",
+          "C18",
+          "C19",
+          "C20",
+          "C22"
+        ))
+        .transform(vectorizeFeatures("features",
+          "os_indexed",
+          "appOrSite_indexed",
+          "bidFloor_indexed",
+          "publisher_indexed",
+          "timestamp_indexed",
+          "sizeReset_indexed",
+          "media_indexed",
+          "C1_indexed",
+          "C2_indexed",
+          "C6_indexed",
+          "C7_indexed",
+          "C8_indexed",
+          "C9_indexed",
+          "C12_indexed",
+          "C14_indexed",
+          "C17_indexed",
+          "C18_indexed",
+          "C19_indexed",
+          "C20_indexed",
+          "C22_indexed"
+        ))
+    }else{
+    data
       .transform(CleanProcess.os)
       .transform(CleanProcess.bidFloor)
       .transform(CleanProcess.timestamp)
       .transform(CleanProcess.sizeBanner)
       .transform(CleanProcess.interests)
       .transform(CleanProcess.media)
-      .transform(CleanProcess.weightDataset(spark))
       .transform(indexStrings(
         "os",
         "appOrSite",
@@ -174,7 +231,6 @@ object CleanProcess {
         "timestamp",
         "sizeReset",
         "media",
-        "label",
         "C1",
         "C2",
         "C6",
@@ -211,6 +267,8 @@ object CleanProcess {
         "C20_indexed",
         "C22_indexed"
       ))
+    }
+
   }
 
   def vectorizeFeatures(vectorName: String, columnNames: String*)(dataFrame: DataFrame): DataFrame = {
