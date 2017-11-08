@@ -12,7 +12,9 @@ Clone this repository (or download as zip)
 
 ***To display usage help***
 - `java -jar wibrave_project.jar --help`
+
 OR in Scala 2.11
+
 - `scala -J-Xmx2g wibrave_project.jar --help`
 
 *The model is pre-trained with 1.000.000 data so it can be used directly.*
