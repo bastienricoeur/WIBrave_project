@@ -1,6 +1,7 @@
 ## WI Brave
 
 The project is provided **pre-built** as an **executable jar** but can be built using `sbt assembly` at the project's root.
+
 You can find the directory `dist/`, as we couldn't upload it to github, which contains the executable jar and the model already trained in the following link : https://wetransfer.com/downloads/100f6ed0fbae984d1503d0a8a7cafc5b20171108214123/2ae1a0cb8f548b51797e91969cd2aadc20171108214123/6c0fd1
 
 To run the jar in **scala** you need to use **scala 2.11**
