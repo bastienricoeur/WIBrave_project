@@ -29,7 +29,7 @@ Clone this repository (or download as zip)
 ***To train a new model with data [Label column needed]***
 - `java -jar wibrave_project.jar train --input /path/to/input.json --output /path/to/model`
 
-*This will output a model directory that can be loaded with `test` or `train`.*
+*This will output a model directory that can be loaded with `test` or `predict`.*
 
 ### Build the project
 
