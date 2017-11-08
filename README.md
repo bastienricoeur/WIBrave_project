@@ -1,7 +1,7 @@
 ## WI Brave
 
 The project is provided **pre-built** as an **executable jar** but can be built using `sbt assembly` at the project's root
-
+To run the jar in **scala** you need to use **scala 2.11**
 ### Run the project
 Clone this repository (or download as zip)
 - `git clone https://github.com/bastienricoeur/WIBrave_project`
