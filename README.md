@@ -12,16 +12,26 @@ Clone this repository (or download as zip)
 
 ***To display usage help***
 - `java -jar wibrave_project.jar --help`
+OR in Scala 2.11
+- `scala -J-Xmx2g wibrave_project.jar --help`
 
 *The model is pre-trained with 1.000.000 data so it can be used directly.*
 
 ***To predict a batch against the model, run:***
 - `java -jar wibrave_project.jar predict --input /path/to/input.json --model /path/to/modelDir --output /path/to/output`
 
+OR in Scala 2.11
+
+- `scala -J-Xmx2g wibrave_project.jar predict --input /path/to/input.json --model /path/to/modelDir --output /path/to/output`
+
 *This will output a csv file with predicted labels in the specified output directory.*
 
 ***To test the model with data [Label column needed]***
 - `java -jar wibrave_project.jar test --input /path/to/input.json --model /path/to/modelDir --output /path/to/output`
+
+OR in Scala 2.11
+
+- `scala -J-Xmx2g wibrave_project.jar test --input /path/to/input.json --model /path/to/modelDir --output /path/to/output`
 
 *This will output a csv file with predicted labels as well as original labels in the specified output directory*
 
@@ -29,6 +39,10 @@ Clone this repository (or download as zip)
 
 ***To train a new model with data [Label column needed]***
 - `java -jar wibrave_project.jar train --input /path/to/input.json --output /path/to/model`
+
+OR in Scala 2.11
+
+- `scala -J-Xmx2g wibrave_project.jar train --input /path/to/input.json --output /path/to/model`
 
 *This will output a model directory that can be loaded with `test` or `predict`.*
 
